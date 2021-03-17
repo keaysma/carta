@@ -5,8 +5,8 @@ body {
 
 header {
   color: #fff;
-  background-color: #103D5D;
-  padding: 33px 0 25px 15px;
+  background-color: #8338c0;
+  padding: 10px 0;
 }
 
 header p {
@@ -23,7 +23,7 @@ header h1 {
   font-weight: 600;
   letter-spacing: 0.3px;
   display: inline-block;
-  margin: 0;
+  margin: auto 0;
   vertical-align: middle;
   
 }
@@ -132,7 +132,7 @@ form button {
 button {
   border-radius: 2px;
   min-width: 88px;
-  background-color: #FA6900;
+  background-color: #fa7000;
   cursor: pointer;
   border: 0;
   min-width: 120px;
@@ -143,14 +143,16 @@ button {
 }
 
 .user-profile {
-  position: fixed;
-  bottom: 20px;
-  right: 40px;
-  width: 100px;
-  height: 100px;
+  display: flex;
 }
 
 .user-profile img {
   border-radius: 50%;
   max-width: 100%;
+  height: 50px;
+}
+
+.user-profile button {
+  height: 50px;
+  margin: auto 5px;
 }

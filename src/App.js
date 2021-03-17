@@ -1,27 +1,21 @@
-import React, { Component } from 'react'
+import React, { Component, useState, useEffect, useRef, useCallback } from 'react'
 import firebase, { auth, provider } from './firebase.js'
+import Canvas from './Canvas'
 import './App.css'
 
-class App extends Component {
-    constructor() {
-        super();
-        this.state = {
-            currentItem: '',
-            items: [],
-            user: null
-        }
+const App = () => {
+    const [canvas, setCanvas] = useState(null)
+    const canvasRef = useRef(null)
 
-        this.listenToItemsCollection = this.listenToItemsCollection.bind(this)
+    const clickHandle = useCallback(clickState => {
+        drawCircle()
+    }, []);
 
-        this.removeItem = this.removeItem.bind(this)
-        this.handleChange = this.handleChange.bind(this)
-        this.handleSubmit = this.handleSubmit.bind(this)
+    const [currentItem, setCurrentItem] = useState('')
+    const [items, setItems] = useState([])
+    const [user, setUser] = useState(null)
 
-        this.login = this.login.bind(this)
-        this.logout = this.logout.bind(this)
-    }
-
-    listenToItemsCollection(){
+    const listenToItemsCollection = () => {
         const itemsRef = firebase.database().ref('users');
         itemsRef.on('value', (snapshot) => {
             let users = snapshot.val()
@@ -40,118 +34,102 @@ class App extends Component {
                 }
             }
 
-            this.setState({
-                items: newState
-            })
+            setItems(newState)
         })
     }
 
-    componentDidMount() {
-        auth.onAuthStateChanged((user) => {
-            if (user) {
-                this.setState({ user })
-                this.listenToItemsCollection()
+    useEffect(() => {
+        auth.onAuthStateChanged((userObj) => {
+            if (userObj) {
+                setUser(userObj)
+                listenToItemsCollection()
             } 
         })
-    }
+    }, [])
 
-    removeItem(itemId) {
+    const removeItem = (itemId) => {
         const itemRef = firebase.database().ref(`/users/${this.state.user.uid}/items/${itemId}`);
         itemRef.remove();
     }
 
-    handleChange(e) {
+    /*const handleChange = (e) => {
         this.setState({
             [e.target.name]: e.target.value
         })
-    }
+    }*/
 
-    handleSubmit(e) {
+    const handleSubmit = (e) => {
         e.preventDefault();
         
         const itemsRef = firebase.database().ref(`/users/${this.state.user.uid}/items`);
         const item = {
-            title: this.state.currentItem,
-            user: this.state.user.displayName || this.state.user.email
+            title: currentItem,
+            user: user.displayName || user.email
         }
         
         itemsRef.push(item);
         
-        this.setState({
-            currentItem: '',
-            username: ''
-        })
+        setCurrentItem('')
     }
 
-    logout() {
+    const draw = ctx => {
+        if(!ctx)
+            return
+        ctx.fillStyle = '#0000f0'
+        ctx.beginPath()
+        ctx.arc(50, 50, 20, 0, 2*Math.PI)
+        ctx.fill()
+    }
+
+    const drawCircle = () => {
+        const context = canvasRef.current.getContext('2d')
+        draw(context)
+    }
+
+    const logout = () => {
         auth.signOut().then(() => {
-            this.setState({
-                user: null,
-                items: []
-            })
+            setUser(null)
+            setItems(items)
         })
     }
 
-    login() {
+    const login = () => {
         auth.signInWithPopup(provider).then((result) => {
-            const user = result.user
-            this.setState({ user })
+            const userRes = result.user
+            setUser(userRes)
         })
     }
 
-    render() {
-        return (
-            <div className='app'>
-                <header>
-                    <div className='wrapper'>
-                        <h1>Fun Food Friends</h1>
-                        {this.state.user ?
-                            <button onClick={this.logout}>Log Out</button>                
+    return (
+        <div className='app'>
+            <header>
+                <div className='wrapper'>
+                    <h1>CARTA</h1>
+                    <div className='user-profile'>
+                        {user ?
+                            <>
+                                <img src={user.photoURL} />
+                                <button onClick={logout}>Log Out</button>  
+                            </>              
                         :
-                            <button onClick={this.login}>Log In</button>              
+                            <button onClick={login}>Log In</button>              
                         }
                     </div>
-                </header>
-                {this.state.user ?
-                    <div>
-                        <div className='user-profile'>
-                            <img src={this.state.user.photoURL} />
-                        </div>
-                        <div className='container'>
-                            <section className='add-item'>
-                                <form onSubmit={this.handleSubmit}>
-                                    <input type="text" name="username" placeholder="What's your name?" value={this.state.user.displayName || this.state.user.email} disabled />
-                                    <input type="text" name="currentItem" placeholder="What are you bringing?" onChange={this.handleChange} value={this.state.currentItem} />
-                                    <button>Add Item</button>
-                                </form>
-                            </section>
-                            <section className='display-item'>
-                                <div className="wrapper">
-                                    <ul>
-                                        {this.state.items.map((item) => {
-                                            return (
-                                                <li key={item.id}>
-                                                <h3>{item.title}</h3>
-                                                <p>brought by: {item.user}
-                                                    {item.user === this.state.user.displayName || item.user === this.state.user.email ?
-                                                        <button onClick={() => this.removeItem(item.id)}>Remove Item</button> : null
-                                                    }
-                                                </p>
-                                                </li>
-                                            )
-                                        })}
-                                    </ul>
-                                </div>
-                            </section>
-                        </div>
+                </div>
+            </header>
+            {user ?
+                <div>
+                    <div className='container'>
+                        <Canvas clickHandle={clickHandle} ref={canvasRef}/>
                     </div>
-                :
-                    <div className='wrapper'>
-                        <p>You must be logged in to see the potluck list and submit to it.</p>
-                    </div>
-                }
-            </div>
-        )
-    }
+                </div>
+            :
+                <div className='wrapper'>
+                    <p>You must be logged in to see your maps.</p>
+                </div>
+            }
+        </div>
+    )
 }
-export default App;
+
+export default App
