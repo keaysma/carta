@@ -4,12 +4,6 @@ import Canvas from './Canvas'
 import './App.css'
 
 const App = () => {
-    const [canvas, setCanvas] = useState(null)
-    const canvasRef = useRef(null)
-
-    const clickHandle = useCallback(clickState => {
-        drawCircle()
-    }, []);
 
     const [currentItem, setCurrentItem] = useState('')
     const [items, setItems] = useState([])
@@ -52,12 +46,6 @@ const App = () => {
         itemRef.remove();
     }
 
-    /*const handleChange = (e) => {
-        this.setState({
-            [e.target.name]: e.target.value
-        })
-    }*/
-
     const handleSubmit = (e) => {
         e.preventDefault();
         
@@ -79,11 +67,6 @@ const App = () => {
         ctx.beginPath()
         ctx.arc(50, 50, 20, 0, 2*Math.PI)
         ctx.fill()
-    }
-
-    const drawCircle = () => {
-        const context = canvasRef.current.getContext('2d')
-        draw(context)
     }
 
     const logout = () => {
@@ -120,7 +103,7 @@ const App = () => {
             {user ?
                 <div>
                     <div className='container'>
-                        <Canvas clickHandle={clickHandle} ref={canvasRef}/>
+                        <Canvas/>
                     </div>
                 </div>
             :
