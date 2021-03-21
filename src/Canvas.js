@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react'
+import firebase from './firebase.js'
 
 const Canvas = ({ }) => {
   
     const canvasRef = useRef(null)
+    const [itemsTable, setItemsTable] = useState(null)
     const [canvas, setCanvas] = useState(null)
     const [context, setContext] = useState(null)
     const [bounds, setBounds] = useState(null)
@@ -11,33 +13,70 @@ const Canvas = ({ }) => {
 
     const [paintColor, setPaintColor] = useState('#f00000')
 
-    /*
-    {
-        x,
-        y
-    }
-    */
+    const [event, setEvent] = useState(null)
+    const [closestObject, setClosestObject] = useState(null)
+    const [dragging, setDragging] = useState(false)
     const [objects, setObjects] = useState([])
 
     useEffect(() => {
-        if(context)
+        if(context && objects)
             crosshairs()
-    }, [clickPosition])
+    }, [clickPosition, objects])
 
-    const getPosition = event => {
+    const moveHandle = event => {
+        if(!canvasPosition)
+            return
+        
+        const newX = (event.screenX - canvasPosition.x) * (1920/bounds.width)
+        const newY = (event.screenY - canvasPosition.y) * (1024/bounds.height) - 120
+
+        if(dragging && closestObject){
+            let object = objects.find(_ => _.id = closestObject.id)
+            
+            object.x += (newX - clickPosition.x)
+            object.y += (newY - clickPosition.y)
+            setObjects([...objects])
+        }
+
         setClickPosition({
-            'x': event.screenX,
-            'y': event.screenY,
+            'x': newX,
+            'y': newY,
         })
     }
 
-    const refreshCanvas = () => {
-        context.clearRect(0, 0, canvas.width, canvas.height)
+    //Append new item on backend
+    const addCanvasItem = async ({x, y}) => {
+        // `/canvas/<canvas_id>/items`
+        const item = {x, y}
+        itemsTable.push(item)
 
-        objects.forEach(({x, y}) => drawObject(x, y))
+        //setObjects([...objects, {x, y}])
     }
 
-    const drawObject = (x, y) => {
+    const clickDownHandle = event => {
+        setEvent(event)
+
+        if(closestObject){
+            setDragging(true)
+        }else{
+            setDragging(false)
+        }
+        
+        crosshairs()
+    }
+
+    const clickUpHandle = event => {
+        setEvent(event)
+
+        if(!dragging)
+            addCanvasItem(clickPosition)
+
+        setDragging(false)
+        
+        crosshairs()
+    }
+
+    const drawCircle = (x, y) => {
         context.fillStyle = paintColor
 
         context.beginPath()
@@ -45,13 +84,11 @@ const Canvas = ({ }) => {
         context.fill()
     }
 
-    const draw = () => {
-        let xPos = clickPosition.x - canvasPosition.x
-        let yPos = clickPosition.y - canvasPosition.y - 100
-        
-        drawObject(xPos, yPos)
+    const refreshCanvas = () => {
+        context.clearRect(0, 0, canvas.width, canvas.height)
 
-        setObjects([...objects, {'x': xPos, 'y': yPos}])
+        if(objects)
+            objects.forEach(({x, y}) => drawCircle(x, y))
     }
 
     const distance = (p1, p2) => {
@@ -61,60 +98,96 @@ const Canvas = ({ }) => {
     }
 
     const highlightNearestObject = () => {
-        let closestPosition = undefined
+        setClosestObject(undefined)
 
-        const pos = {
-            'x': clickPosition.x - canvasPosition.x,
-            'y': clickPosition.y - canvasPosition.y - 100
-        }
+        if(!objects)
+            return
+        
+        let closest = undefined
 
         for(let object of objects){
-            if(!closestPosition){
-                closestPosition = object
+            if(!closest){
+                closest = object
             }else{
                 
 
-                let orig_dist = distance(pos, closestPosition)
-                let new_dist = distance(pos, object)
+                let orig_dist = distance(clickPosition, closest)
+                let new_dist = distance(clickPosition, object)
                 if(new_dist < orig_dist){
-                    closestPosition = object
+                    closest = object
                 }
             }
         }
 
-        if(closestPosition && distance(pos, closestPosition) < 50){
+        if(closest && distance(clickPosition, closest) < 20){
+            setClosestObject(closest)
+
             context.fillStyle = '#0ff'
 
             context.beginPath()
-            context.arc(closestPosition.x, closestPosition.y, 20, 0, 2*Math.PI)
+            context.arc(closest.x, closest.y, 20, 0, 2*Math.PI)
             context.fill()
         }
     }
 
     const crosshairs = () => {
+        if(!clickPosition)
+            return
+        
         refreshCanvas()
 
         context.setLineDash([5, 2])
         context.strokeStyle = '#ccc'
 
-        let xPos = clickPosition.x - canvasPosition.x
-        let yPos = clickPosition.y - canvasPosition.y - 100
-
         context.beginPath()
-        context.moveTo(xPos, 0)
-        context.lineTo(xPos, canvas.height)
+        context.moveTo(clickPosition.x, 0)
+        context.lineTo(clickPosition.x, canvas.height)
         context.stroke()
 
         context.beginPath()
-        context.moveTo(0, yPos)
-        context.lineTo(canvas.width, yPos)
+        context.moveTo(0, clickPosition.y)
+        context.lineTo(canvas.width, clickPosition.y)
         context.stroke()
 
-        highlightNearestObject()
-        
+        if(!dragging)
+            highlightNearestObject()   
     }
 
     useEffect(() => {
+        const _itemsTable = firebase.database().ref(`test`)
+        _itemsTable.get().then(snapshot => {
+            let items = snapshot.val()
+            let newObjects = []
+
+            for (let item in items) {
+                if(item)
+                    newObjects.push({
+                        id: item,
+                        x: items[item].x,
+                        y: items[item].y
+                    })
+            }
+
+            setObjects(newObjects)
+        })
+
+        _itemsTable.on('value', (snapshot) => {
+            let items = snapshot.val()
+            let newObjects = []
+
+            for (let item in items) {
+                if(item)
+                    newObjects.push({
+                        id: item,
+                        x: items[item].x,
+                        y: items[item].y
+                    })
+            }
+
+            setObjects(newObjects)
+        })
+        setItemsTable(_itemsTable)
+
         const canvas = canvasRef.current
         setCanvas(canvas)
         
@@ -129,7 +202,7 @@ const Canvas = ({ }) => {
         })
     }, [])
   
-    return <canvas onClick={draw} onMouseMove={e => getPosition(e)} ref={canvasRef} width="1024" height="768"/>
+    return <canvas onMouseDown={clickDownHandle} onMouseUp={clickUpHandle} onMouseMove={moveHandle} ref={canvasRef} width="1920" height="1024"/>
 }
 
 export default Canvas

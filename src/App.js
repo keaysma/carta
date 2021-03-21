@@ -1,6 +1,7 @@
 import React, { Component, useState, useEffect, useRef, useCallback } from 'react'
 import firebase, { auth, provider } from './firebase.js'
 import Canvas from './Canvas'
+import Toolbar from './Toolbar'
 import './App.css'
 
 const App = () => {
@@ -104,6 +105,7 @@ const App = () => {
                 <div>
                     <div className='container'>
                         <Canvas/>
+                        <Toolbar/>
                     </div>
                 </div>
             :
