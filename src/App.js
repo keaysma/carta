@@ -6,6 +6,10 @@ import './App.css'
 
 const App = () => {
 
+    const [settings, setSettings] = useState({
+        gridMode : false,
+        color: '#00F'
+    })
     const [currentItem, setCurrentItem] = useState('')
     const [items, setItems] = useState([])
     const [user, setUser] = useState(null)
@@ -43,7 +47,7 @@ const App = () => {
     }, [])
 
     const removeItem = (itemId) => {
-        const itemRef = firebase.database().ref(`/users/${this.state.user.uid}/items/${itemId}`);
+        const itemRef = firebase.database().ref(`/users/${user.uid}/items/${itemId}`);
         itemRef.remove();
     }
 
@@ -84,6 +88,16 @@ const App = () => {
         })
     }
 
+    const useToolbar = (state) => {
+        if(state === 'grid')
+            setSettings({ ...settings, gridMode: !settings.gridMode})
+
+        if(state === 'clean'){
+            const itemsTable = firebase.database().ref(`canvas/test/items`)
+            itemsTable.remove()
+        }
+    }
+
     return (
         <div className='app'>
             <header>
@@ -104,8 +118,8 @@ const App = () => {
             {user ?
                 <div>
                     <div className='container'>
-                        <Canvas/>
-                        <Toolbar/>
+                        <Canvas user={user} settings={settings}/>
+                        <Toolbar callback={useToolbar} settings={settings}/>
                     </div>
                 </div>
             :

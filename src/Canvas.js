@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import firebase from './firebase.js'
 
-const Canvas = ({ }) => {
+const Canvas = ({ user, settings }) => {
   
     const canvasRef = useRef(null)
     const [itemsTable, setItemsTable] = useState(null)
@@ -11,15 +11,13 @@ const Canvas = ({ }) => {
     const [canvasPosition, setCanvasPosition] = useState(null)
     const [clickPosition, setClickPosition] = useState(null)
 
-    const [paintColor, setPaintColor] = useState('#f00000')
-
     const [event, setEvent] = useState(null)
     const [closestObject, setClosestObject] = useState(null)
     const [dragging, setDragging] = useState(false)
     const [objects, setObjects] = useState([])
 
     useEffect(() => {
-        if(context && objects)
+        if(context)
             crosshairs()
     }, [clickPosition, objects])
 
@@ -27,15 +25,26 @@ const Canvas = ({ }) => {
         if(!canvasPosition)
             return
         
-        const newX = (event.screenX - canvasPosition.x) * (1920/bounds.width)
-        const newY = (event.screenY - canvasPosition.y) * (1024/bounds.height) - 120
+        var newX = (event.screenX - canvasPosition.x) * (1920/bounds.width)
+        if(settings.gridMode)
+            newX = parseInt(newX/10)*10
+        
+        var newY = (event.screenY - canvasPosition.y) * (1024/bounds.height) - (1024 - bounds.height)
+        if(settings.gridMode)
+            newY = parseInt(newY/10)*10
 
         if(dragging && closestObject){
-            let object = objects.find(_ => _.id = closestObject.id)
+            //let object = objects.find(_ => _.id = closestObject.id)
             
-            object.x += (newX - clickPosition.x)
-            object.y += (newY - clickPosition.y)
-            setObjects([...objects])
+            let xShift = (newX - clickPosition.x)
+            let yShift = (newY - clickPosition.y)
+            //setObjects([...objects])
+
+            const _itemsTable = firebase.database().ref(`canvas/test/items/${closestObject.id}`)
+            _itemsTable.update({
+                x: newX,//closestObject.x + xShift,
+                y: newY//closestObject.y + yShift
+            })
         }
 
         setClickPosition({
@@ -55,14 +64,14 @@ const Canvas = ({ }) => {
 
     const clickDownHandle = event => {
         setEvent(event)
+        
+        //crosshairs()
 
         if(closestObject){
             setDragging(true)
         }else{
             setDragging(false)
         }
-        
-        crosshairs()
     }
 
     const clickUpHandle = event => {
@@ -73,11 +82,11 @@ const Canvas = ({ }) => {
 
         setDragging(false)
         
-        crosshairs()
+        //crosshairs()
     }
 
     const drawCircle = (x, y) => {
-        context.fillStyle = paintColor
+        context.fillStyle = settings.color
 
         context.beginPath()
         context.arc(x, y, 20, 0, 2*Math.PI)
@@ -98,6 +107,9 @@ const Canvas = ({ }) => {
     }
 
     const highlightNearestObject = () => {
+        if(dragging)
+            return
+        
         setClosestObject(undefined)
 
         if(!objects)
@@ -131,10 +143,10 @@ const Canvas = ({ }) => {
     }
 
     const crosshairs = () => {
+        refreshCanvas()
+
         if(!clickPosition)
             return
-        
-        refreshCanvas()
 
         context.setLineDash([5, 2])
         context.strokeStyle = '#ccc'
@@ -154,7 +166,7 @@ const Canvas = ({ }) => {
     }
 
     useEffect(() => {
-        const _itemsTable = firebase.database().ref(`test`)
+        const _itemsTable = firebase.database().ref(`canvas/test/items`)
         _itemsTable.get().then(snapshot => {
             let items = snapshot.val()
             let newObjects = []
@@ -185,6 +197,9 @@ const Canvas = ({ }) => {
             }
 
             setObjects(newObjects)
+
+            if(closestObject)
+                setClosestObject(newObjects.find(_ => _.id = closestObject.id))
         })
         setItemsTable(_itemsTable)
 
