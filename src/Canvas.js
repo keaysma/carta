@@ -30,6 +30,7 @@ const Canvas = ({ user, settings }) => {
             newX = parseInt(newX/10)*10
         
         var newY = (event.screenY - canvasPosition.y) * (1024/bounds.height) - (1024 - bounds.height)
+        // var newY = (event.screenY - canvasPosition.y) * (1024/bounds.height)
         if(settings.gridMode)
             newY = parseInt(newY/10)*10
 
@@ -48,6 +49,7 @@ const Canvas = ({ user, settings }) => {
         }
 
         setClickPosition({
+            'name': 'clickPosition',
             'x': newX,
             'y': newY,
         })

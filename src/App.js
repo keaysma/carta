@@ -2,7 +2,7 @@ import React, { Component, useState, useEffect, useRef, useCallback } from 'reac
 import firebase, { auth, provider } from './firebase.js'
 import Canvas from './Canvas'
 import Toolbar from './Toolbar'
-import './App.css'
+import './App.scss'
 
 const App = () => {
 
