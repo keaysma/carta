@@ -85,8 +85,9 @@ const App = () => {
                 circle.draggable('true')
                 layer.add(circle)
                 circle.on('dragend', (e) => {
-                    console.log('.')
-                    let pos = circle.getPosition()
+                    let pos = e.target.getPosition()
+                    //console.log(e)
+                    console.log(`${item}: (${pos.x}, ${pos.y})`)
                     const _itemsTable = firebase.database().ref(`canvas/test/items/${item}`)
                     _itemsTable.update({
                         x: pos.x,
