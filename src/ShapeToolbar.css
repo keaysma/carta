@@ -1,0 +1,24 @@
+#shape-toolbar {
+    position: absolute;
+    display: flex;
+    flex-direction: row;
+
+    right: 50px;
+    bottom: 225px;
+
+    /* width: 250px; */
+    /* height: 50px; */
+
+    padding: 10px;
+
+    background-color: #aaa4;
+
+    border: 1px solid #8886;
+    border-radius: 10px;
+}
+
+#shape-toolbar .item {
+    margin: 0px 10px;
+
+    text-align: center;
+}

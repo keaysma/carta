@@ -1,21 +1,42 @@
 import React, { Component, useState, useEffect, useRef, useCallback } from 'react'
 import Konva from 'konva'
 import firebase, { auth, provider } from './firebase.js'
-import Canvas from './Canvas'
 import Toolbar from './Toolbar'
+import ShapeToolbar from './ShapeToolbar'
 import './App.scss'
 
 const App = () => {
 
     const [settings, setSettings] = useState({
+        shapeMenuOpen : false,
+        shape: 'Circle',
         gridMode : false,
         color: '#00F'
     })
+    const [shape, setShape] = useState('Circle')
+
     const containerRef = useRef()
     const [stage, setStage] = useState(null)
     const [currentItem, setCurrentItem] = useState('')
     const [users, setUsers] = useState([])
     const [user, setUser] = useState(null)
+
+    const getSettings = () => settings
+
+    const useToolbar = (state) => {
+        if(state === 'shape-menu')
+            setSettings({ ...settings, shapeMenuOpen: !settings.shapeMenuOpen})
+
+        if(state === 'grid')
+            setSettings({ ...settings, gridMode: !settings.gridMode})
+
+        if(state === 'clean'){
+            const itemsTable = firebase.database().ref(`canvas/test/items`)
+            itemsTable.remove()
+        }
+    }
+
+    const useToolbarShape = (newShape) => setShape(newShape)
 
     useEffect(() => {
         auth.onAuthStateChanged((userObj) => {
@@ -50,31 +71,25 @@ const App = () => {
                 }))
             } 
         })
+
+        function handleResize() {
+            stage?.size({
+                width: containerRef.current.clientWidth,
+                height: containerRef.current.clientHeight
+            })
+        }
+    
+        window.addEventListener('resize', handleResize)
     }, [])
 
-    useEffect(() => {
-        if(!stage)
-            return
-
-        const itemsRef = firebase.database().ref(`canvas/test/items`)
-        itemsRef.get().then(snapshot => syncCanvas(snapshot.val()))
-        itemsRef.on('value', snapshot => syncCanvas(snapshot.val()))
-    },[stage])
-
     const syncCanvas = (items) => {
-        let newObjects = []
-
         var layer = new Konva.Layer()
 
         for (let item in items) {
             if(item){
-                newObjects.push({
-                    id: item,
-                    x: items[item].x,
-                    y: items[item].y
-                })
+                let shape = items[item]?.shape ?? 'Circle'
 
-                var circle = new Konva.Circle({
+                var kItem = new Konva[shape]({
                     x: items[item].x,
                     y: items[item].y,
                     radius: 70,
@@ -82,9 +97,9 @@ const App = () => {
                     stroke: 'black',
                     strokeWidth: 4
                 })
-                circle.draggable('true')
-                layer.add(circle)
-                circle.on('dragend', (e) => {
+                kItem.draggable('true')
+                layer.add(kItem)
+                kItem.on('dragend', (e) => {
                     let pos = e.target.getPosition()
                     //console.log(e)
                     console.log(`${item}: (${pos.x}, ${pos.y})`)
@@ -99,13 +114,15 @@ const App = () => {
 
         stage.off('click')
         stage.on('click', (e) => {
-            console.log(e.evt)
+            // console.log(e.evt)
+            console.log(`shape: ${shape}`)
             if(e.evt.shiftKey)
                 return
             const _itemsTable = firebase.database().ref(`canvas/test/items/`)
             _itemsTable.push({
                 x: e.evt.layerX,
-                y: e.evt.layerY
+                y: e.evt.layerY,
+                shape : getSettings().shape
             })
         })        
 
@@ -115,44 +132,13 @@ const App = () => {
     }
 
     useEffect(() => {
-        function handleResize() {
-            //console.log('resized to: ', window.innerWidth, 'x', window.innerHeight)
-            stage?.size({
-                width: containerRef.current.clientWidth,
-                height: containerRef.current.clientHeight
-            })
-        }
-    
-        window.addEventListener('resize', handleResize)
-    })
-
-    const removeItem = (itemId) => {
-        const itemRef = firebase.database().ref(`/users/${user.uid}/items/${itemId}`);
-        itemRef.remove();
-    }
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        
-        const itemsRef = firebase.database().ref(`/users/${this.state.user.uid}/items`);
-        const item = {
-            title: currentItem,
-            user: user.displayName || user.email
-        }
-        
-        itemsRef.push(item);
-        
-        setCurrentItem('')
-    }
-
-    const draw = ctx => {
-        if(!ctx)
+        if(!stage)
             return
-        ctx.fillStyle = '#0000f0'
-        ctx.beginPath()
-        ctx.arc(50, 50, 20, 0, 2*Math.PI)
-        ctx.fill()
-    }
+
+        const itemsRef = firebase.database().ref(`canvas/test/items`)
+        itemsRef.get().then(snapshot => syncCanvas(snapshot.val()))
+        itemsRef.on('value', snapshot => syncCanvas(snapshot.val()))
+    },[stage])
 
     const logout = () => {
         auth.signOut().then(() => {
@@ -165,16 +151,6 @@ const App = () => {
             const userRes = result.user
             setUser(userRes)
         })
-    }
-
-    const useToolbar = (state) => {
-        if(state === 'grid')
-            setSettings({ ...settings, gridMode: !settings.gridMode})
-
-        if(state === 'clean'){
-            const itemsTable = firebase.database().ref(`canvas/test/items`)
-            itemsTable.remove()
-        }
     }
 
     return (
@@ -200,6 +176,7 @@ const App = () => {
                         {/* <Canvas user={user} settings={settings}/> */}
                         <div id="canvas"></div>
                         <Toolbar callback={useToolbar} settings={settings}/>
+                        {settings.shapeMenuOpen && <ShapeToolbar callback={useToolbarShape} settings={settings}/>}
                     </div>
                 </div>
             :
